@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>お仕事たね診断 | 興味と得意からさがす業務ヒアリング</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@400;500;700;900&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div class="app-shell">
+
+  <!-- ===== HEADER / PROGRESS ===== -->
+  <header class="topbar no-print" id="topbar">
+    <div class="topbar-inner">
+      <div class="brand">
+        <span class="brand-leaf">🌱</span>
+        <span class="brand-name">お仕事たね診断</span>
+      </div>
+      <div class="progress-info" id="progressInfo">
+        <span id="stepLabel">はじめに</span>
+      </div>
+    </div>
+    <div class="progress-track">
+      <div class="progress-fill" id="progressFill" style="width:0%"></div>
+    </div>
+  </header>
+
+  <main class="stage" id="stage">
+
+    <!-- ===== INTRO SCREEN ===== -->
+    <section class="screen intro-screen" id="screen-intro" data-active="true">
+      <div class="card intro-card">
+        <div class="intro-emoji">🌱🧭✨</div>
+        <h1>お仕事たね診断</h1>
+        <p class="intro-lead">
+          これは診断名をつけるテストではありません。<br>
+          あなたの「好き」「得意」「苦手」「心地よい環境」を丁寧にたどりながら、
+          いま任せると力を発揮しやすそうな業務のたねを一緒に見つけるヒアリングツールです。
+        </p>
+        <ul class="intro-points">
+          <li>✅ 全問5〜7カテゴリー、選ぶだけで進みます</li>
+          <li>✅ 回答はこの端末の中だけで保存されます</li>
+          <li>✅ 最後に結果を印刷・コピーできます</li>
+        </ul>
+        <button class="btn btn-primary btn-large" id="btnStart">はじめる</button>
+      </div>
+    </section>
+
+    <!-- ===== QUESTION SCREENS (injected by JS) ===== -->
+    <section class="screen question-screen" id="screen-questions">
+      <div class="card question-card">
+        <div class="section-heading" id="sectionHeading"></div>
+        <div class="section-sub" id="sectionSub"></div>
+        <div class="questions-list" id="questionsList"></div>
+      </div>
+    </section>
+
+    <!-- ===== RESULT SCREEN ===== -->
+    <section class="screen result-screen" id="screen-result">
+      <div id="resultContent"></div>
+    </section>
+
+  </main>
+
+  <!-- ===== NAV FOOTER ===== -->
+  <footer class="navbar no-print" id="navbar" data-visible="false">
+    <button class="btn btn-ghost" id="btnPrev">← 前へ</button>
+    <div class="navbar-spacer"></div>
+    <button class="btn btn-primary" id="btnNext">次へ →</button>
+  </footer>
+
+  <!-- ===== RESULT ACTION FOOTER ===== -->
+  <footer class="navbar no-print" id="resultBar" data-visible="false">
+    <button class="btn btn-ghost" id="btnRestart">🔄 最初からやり直す</button>
+    <button class="btn btn-outline" id="btnCopy">📋 結果をコピー</button>
+    <button class="btn btn-primary" id="btnPrint">🖨 結果を印刷 / PDF保存</button>
+  </footer>
+
+</div>
+
+<div class="toast no-print" id="toast"></div>
+
+<script src="script.js"></script>
+</body>
+</html>
