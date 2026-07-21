@@ -103,6 +103,36 @@ button{font-family:inherit;}
 .intro-emoji{font-size:38px;margin-bottom:6px;letter-spacing:8px;}
 .intro-card h1{font-size:26px;color:var(--sage-deep);margin:6px 0 14px;}
 .intro-lead{color:var(--ink-soft);font-size:15.5px;margin-bottom:18px;}
+.nickname-field{
+  text-align:left;
+  margin-bottom:24px;
+}
+.nickname-field label{
+  display:block;
+  font-size:13.5px;
+  font-weight:700;
+  color:var(--sage-deep);
+  margin-bottom:6px;
+}
+.nickname-field input{
+  width:100%;
+  padding:12px 14px;
+  border:2px solid var(--line);
+  border-radius:var(--radius-sm);
+  font-size:15px;
+  font-family:inherit;
+  color:var(--ink);
+  background:var(--cream);
+}
+.nickname-field input:focus{
+  outline:none;
+  border-color:var(--sage);
+}
+.nickname-hint{
+  font-size:12px;
+  color:var(--ink-soft);
+  margin:6px 0 0;
+}
 .intro-points{
   list-style:none;padding:0;margin:0 0 26px;
   display:flex;flex-direction:column;gap:8px;
@@ -272,6 +302,8 @@ button{font-family:inherit;}
 
 .section-title{font-size:17px;font-weight:800;color:var(--sage-deep);margin:0 0 12px;display:flex;align-items:center;gap:8px;}
 
+.classify-lead{font-size:13.5px;color:var(--ink-soft);margin:-4px 0 14px;line-height:1.6;}
+.classify-block li b{color:var(--sage-deep);}
 .classify-grid{display:flex;flex-direction:column;gap:14px;}
 .classify-block{border-radius:var(--radius-md);padding:16px 18px;border:2px solid var(--line);}
 .classify-block.main{border-color:var(--sage);background:#f4f9f5;}

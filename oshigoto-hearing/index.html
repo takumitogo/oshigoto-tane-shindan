@@ -8,6 +8,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@400;500;700;900&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 </head>
 <body>
 
@@ -43,9 +44,14 @@
         </p>
         <ul class="intro-points">
           <li>✅ 全問5〜7カテゴリー、選ぶだけで進みます</li>
-          <li>✅ 回答はこの端末の中だけで保存されます</li>
+          <li>✅ 回答はこの端末の中に保存されます</li>
           <li>✅ 最後に結果を印刷・コピーできます</li>
         </ul>
+        <div class="nickname-field">
+          <label for="nicknameInput">お名前・ニックネーム（任意）</label>
+          <input type="text" id="nicknameInput" placeholder="例：やまだ" maxlength="40">
+          <p class="nickname-hint">結果を記録用に送信する際、誰の回答か分かりやすくするためのものです。未入力でも診断は利用できます。</p>
+        </div>
         <button class="btn btn-primary btn-large" id="btnStart">はじめる</button>
       </div>
     </section>

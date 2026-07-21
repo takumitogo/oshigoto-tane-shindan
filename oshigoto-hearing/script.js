@@ -372,6 +372,20 @@ const STRESS_PHRASES = {
 };
 
 /* -------------------------------------------------------------------------
+   4.5 Supabase 連携設定
+   ------------------------------------------------------------------------- */
+
+const SUPABASE_URL = "https://oidzqhsvohfxlewnfeoz.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9pZHpxaHN2b2hmeGxld25mZW96Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ2MDY4NjEsImV4cCI6MjEwMDE4Mjg2MX0.Rcb_S8F6pdjUI1NcWFVQ8rF4IbKOEIHJCHmsqAzAQQQ";
+
+let supabaseClient = null;
+try {
+  if (window.supabase && SUPABASE_URL && SUPABASE_ANON_KEY) {
+    supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  }
+} catch (e) { /* noop */ }
+
+/* -------------------------------------------------------------------------
    5. セクション構成（進捗表示・画面遷移の単位）
    ------------------------------------------------------------------------- */
 
@@ -457,6 +471,7 @@ function goToStep(step) {
     resultBar.setAttribute("data-visible", "true");
     stepLabel.textContent = "診断結果";
     progressFill.style.width = "100%";
+    saveResultToSupabase();
     return;
   }
 
@@ -473,7 +488,11 @@ function goToStep(step) {
   el("btnNext").textContent = step === SECTIONS.length - 1 ? "診断結果を見る →" : "次へ →";
 }
 
-el("btnStart").addEventListener("click", () => goToStep(0));
+el("btnStart").addEventListener("click", () => {
+  const nickInput = el("nicknameInput");
+  if (nickInput) state.nickname = nickInput.value.trim();
+  goToStep(0);
+});
 el("btnPrev").addEventListener("click", () => goToStep(state.currentStep - 1));
 el("btnNext").addEventListener("click", () => { goToStep(state.currentStep + 1); });
 
@@ -714,35 +733,16 @@ function matchBusinesses(scores) {
   }).filter(b => b.recommended.length || b.conditional.length);
 }
 
-// 全業務を横断した「主担当候補 / 条件付き / 避けた方がよい」の分類
-function classifyAllTasks(scores) {
-  const rankIndex = {};
-  scores.ranked.forEach((r, i) => rankIndex[r.cat] = i);
-
-  const main = new Set(), cond = new Set(), avoid = new Set();
-
-  BUSINESSES.forEach(biz => {
-    Object.entries(biz.tasksByCategory).forEach(([cat, tasks]) => {
-      const idx = rankIndex[cat];
-      const score = scores.catScores[cat];
-      tasks.forEach(task => {
-        if (score < 0 || idx >= 9) {
-          avoid.add(task);
-        } else if (idx <= 2) {
-          if (scores.outreachSensitive && taskIsOutreach(task)) cond.add(task);
-          else main.add(task);
-        } else {
-          cond.add(task);
-        }
-      });
-    });
+// 12カテゴリーを「主担当候補 / 条件付き / 避けた方がよい」に分類（カテゴリー単位・一般的な傾向）
+function classifyCategories(scores) {
+  const main = [], cond = [], avoid = [];
+  scores.ranked.forEach((r, idx) => {
+    const item = { cat: r.cat, score: r.score, desc: CATEGORY_PHRASES[r.cat] || r.cat };
+    if (r.score < 0 || idx >= 9) avoid.push(item);
+    else if (idx <= 2) main.push(item);
+    else cond.push(item);
   });
-
-  return {
-    main: [...main].slice(0, 10),
-    cond: [...cond].slice(0, 10),
-    avoid: [...avoid].slice(0, 8),
-  };
+  return { main, cond, avoid };
 }
 
 /* -------------------------------------------------------------------------
@@ -779,10 +779,11 @@ function renderResult() {
   const scores = computeScores();
   const maxAbs = Math.max(4, ...scores.ranked.map(r => Math.abs(r.score))) || 1;
   const bizMatches = matchBusinesses(scores);
-  const classify = classifyAllTasks(scores);
+  const classify = classifyCategories(scores);
   const narrative = buildNarrative(scores);
   const envList = buildEnvList(scores);
   const topStressList = scores.stressResults.filter(s => s.burden > 0).slice(0, 5);
+  const top3Names = scores.ranked.slice(0, 3).map(r => r.cat).join("・");
 
   const rankMedal = ["🥇", "🥈", "🥉"];
 
@@ -834,25 +835,27 @@ function renderResult() {
     </div>
 
     <div class="card">
-      <div class="section-title">🗂 業務分類の目安</div>
+      <div class="section-title">🗂 業務タイプ別の目安（一般的な傾向）</div>
+      <p class="classify-lead">特定の事業に関わらず、「どんな性質の業務が向いていそうか」をカテゴリー単位でまとめたものです。具体的な業務名は下の「事業別・おすすめ業務候補」で確認できます。</p>
       <div class="classify-grid">
         <div class="classify-block main">
-          <h4>✅ 主担当候補</h4>
-          <ul>${classify.main.map(t => `<li>${t}</li>`).join("") || "<li>該当データ不足</li>"}</ul>
+          <h4>✅ 主担当候補になりやすいタイプ</h4>
+          <ul>${classify.main.map(c => `<li><b>${c.cat}</b>：${c.desc}</li>`).join("") || "<li>該当データ不足</li>"}</ul>
         </div>
         <div class="classify-block cond">
-          <h4>🟡 条件付きで担当可能</h4>
-          <ul>${classify.cond.map(t => `<li>${t}</li>`).join("") || "<li>該当データ不足</li>"}</ul>
+          <h4>🟡 条件付きで担当できそうなタイプ</h4>
+          <ul>${classify.cond.map(c => `<li><b>${c.cat}</b>：${c.desc}</li>`).join("") || "<li>該当データ不足</li>"}</ul>
         </div>
         <div class="classify-block avoid">
-          <h4>⚪ 避けた方がよい可能性がある</h4>
-          <ul>${classify.avoid.map(t => `<li>${t}</li>`).join("") || "<li>該当データ不足</li>"}</ul>
+          <h4>⚪ 避けた方がよい可能性があるタイプ</h4>
+          <ul>${classify.avoid.map(c => `<li><b>${c.cat}</b>：${c.desc}</li>`).join("") || "<li>該当データ不足</li>"}</ul>
         </div>
       </div>
     </div>
 
     <div class="card">
       <div class="section-title">🏢 事業別・おすすめ業務候補</div>
+      <p class="classify-lead">上の「主担当候補」に挙がった${top3Names ? `<b>${top3Names}</b>` : "上位カテゴリー"}を、今の各事業の実際の業務に当てはめるとこうなります。</p>
       ${bizMatches.map(b => `
         <div class="biz-card">
           <h4>${b.name}</h4>
@@ -890,6 +893,39 @@ function renderResult() {
 }
 
 /* -------------------------------------------------------------------------
+   13.5 Supabaseへの結果送信（1回の診断につき1回だけ送信）
+   ------------------------------------------------------------------------- */
+
+async function saveResultToSupabase() {
+  if (!supabaseClient) return;      // 未設定なら何もしない
+  if (state.resultSaved) return;    // 二重送信防止
+  state.resultSaved = true;
+
+  const scores = computeScores();
+  const narrative = buildNarrative(scores);
+
+  const payload = {
+    nickname: state.nickname || null,
+    top_categories: scores.ranked.slice(0, 3).map(r => ({ cat: r.cat, score: r.score })),
+    category_scores: scores.catScores,
+    narrative,
+    answers: state.answers,
+  };
+
+  try {
+    const { error } = await supabaseClient.from("oshigoto_tane_results").insert(payload);
+    if (error) {
+      console.error("Supabase insert error:", error);
+      showToast("結果の送信に失敗しました（診断結果自体は表示されています）");
+    } else {
+      showToast("結果を記録しました");
+    }
+  } catch (e) {
+    console.error("Supabase insert exception:", e);
+  }
+}
+
+/* -------------------------------------------------------------------------
    14. 保存・印刷・コピー・やり直し
    ------------------------------------------------------------------------- */
 
@@ -898,14 +934,18 @@ el("btnPrint").addEventListener("click", () => window.print());
 el("btnRestart").addEventListener("click", () => {
   if (!confirm("回答を最初からやり直します。よろしいですか？")) return;
   state.answers = {};
+  state.resultSaved = false;
+  state.nickname = "";
   try { localStorage.removeItem(STORAGE_KEY); } catch (e) { /* noop */ }
+  const nickInput = el("nicknameInput");
+  if (nickInput) nickInput.value = "";
   goToStep(-1);
 });
 
 el("btnCopy").addEventListener("click", () => {
   const scores = computeScores();
   const narrative = buildNarrative(scores);
-  const classify = classifyAllTasks(scores);
+  const classify = classifyCategories(scores);
   const envList = buildEnvList(scores);
   const topStressList = scores.stressResults.filter(s => s.burden > 0).slice(0, 5);
 
@@ -924,14 +964,14 @@ el("btnCopy").addEventListener("click", () => {
   lines.push("■ 手が止まりやすい条件");
   topStressList.forEach(s => lines.push("・" + s.text));
   lines.push("");
-  lines.push("■ 主担当候補");
-  classify.main.forEach(t => lines.push("・" + t));
+  lines.push("■ 主担当候補になりやすいタイプ");
+  classify.main.forEach(c => lines.push(`・${c.cat}：${c.desc}`));
   lines.push("");
-  lines.push("■ 条件付きで担当可能");
-  classify.cond.forEach(t => lines.push("・" + t));
+  lines.push("■ 条件付きで担当できそうなタイプ");
+  classify.cond.forEach(c => lines.push(`・${c.cat}：${c.desc}`));
   lines.push("");
-  lines.push("■ 避けた方がよい可能性がある");
-  classify.avoid.forEach(t => lines.push("・" + t));
+  lines.push("■ 避けた方がよい可能性があるタイプ");
+  classify.avoid.forEach(c => lines.push(`・${c.cat}：${c.desc}`));
   lines.push("");
   lines.push("※この結果は医学的な診断や能力評価ではありません。");
 
