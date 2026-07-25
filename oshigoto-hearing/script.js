@@ -989,3 +989,654 @@ el("btnCopy").addEventListener("click", () => {
 
 loadSaved();
 goToStep(-1);
+
+/* =========================================================================
+   ============================================================
+   人生棚卸し (LIFE REVIEW) module — 既存の診断機能とは完全に独立
+   優先度A（必須）の範囲のみ実装:
+     - 5フェーズのページ追加
+     - 各設問への回答（単一選択・複数選択・5段階・短文・自由記述）
+     - 途中保存（自動保存・localStorage）
+     - 回答の編集・閲覧
+     - フェーズ別結果表示
+     - スマホ対応
+   優先度B/C（出来事カード・テーマ別表示・AI要約・会話用メモ・PDF出力）は今回未実装。
+   ============================================================
+   ========================================================================= */
+
+/* ---- 質問データ構築用の短縮ヘルパー ---- */
+const LR = {
+  F: (id, text) => ({ id, type: "free", text }),
+  S: (id, text) => ({ id, type: "short", text }),
+  SEL: (id, text, options) => ({ id, type: "single", text, options }),
+  MULTI: (id, text, options) => ({ id, type: "multi", text, options }),
+};
+
+/* ---- フェーズA: 保育園 ---- */
+const LR_PHASE_A = {
+  key: "youchien", title: "保育園", emoji: "🧸",
+  groups: [
+    { title: "当時の環境", qs: [
+      LR.SEL("A1", "保育園・幼稚園時代のことを、どれくらい覚えていますか？", ["よく覚えている", "一部覚えている", "親や家族から聞いた話が中心", "ほとんど覚えていない"]),
+      LR.MULTI("A2", "誰と一緒に過ごすことが多かったですか？", ["母親", "父親", "祖父母", "兄弟・姉妹", "保育士・先生", "友達", "一人で過ごすことが多かった", "その他"]),
+      LR.F("A3", "当時、安心できた場所はありましたか？"),
+    ]},
+    { title: "好きだったこと・得意だったこと", qs: [
+      LR.MULTI("A4", "どのような遊びが好きでしたか？", ["外遊び", "お絵描き", "工作", "人形・ぬいぐるみ", "絵本", "テレビ・アニメ", "音楽・歌", "同じ遊びを繰り返す", "一人遊び", "友達との遊び", "覚えていない", "その他"]),
+      LR.S("A5", "時間を忘れるほど夢中になったものはありましたか？"),
+      LR.F("A6", "周囲から褒められたことや、得意だったことはありますか？"),
+    ]},
+    { title: "困っていたこと", qs: [
+      LR.MULTI("A7", "当時、苦手だった可能性があるものを選んでください。", ["集団行動", "順番を待つ", "急な予定変更", "昼寝", "食事", "着替え", "片付け", "トイレ", "友達と遊ぶ", "気持ちを言葉にする", "感情を落ち着かせる", "音", "光", "におい", "服や物の感触", "特になかった", "覚えていない", "その他"]),
+      LR.F("A8", "泣いたり怒ったりしたとき、どのような状態だったと思いますか？"),
+      LR.MULTI("A9", "周囲の大人から、どのような子だと思われていたと思いますか？", ["元気", "おとなしい", "落ち着きがない", "手がかかる", "マイペース", "頑固", "人見知り", "よく泣く", "一人で遊ぶ", "変わっている", "覚えていない", "その他"]),
+    ]},
+    { title: "周囲・相談・支援", qs: [
+      LR.F("A10", "安心できる大人はいましたか？"),
+      LR.F("A11", "その人のどのようなところが安心できましたか？"),
+      LR.F("A12", "苦手だった大人や接し方はありましたか？"),
+      LR.F("A13", "当時、どのような大人が近くにいたらよかったと思いますか？"),
+      LR.F("A14", "親にしてもらってよかったことはありますか？"),
+      LR.F("A15", "親や先生に、してほしくなかったことはありますか？"),
+    ]},
+    { title: "現在からの振り返り", qs: [
+      LR.F("A16", "今振り返ると、発達特性と関係していたかもしれない出来事はありますか？"),
+      LR.F("A17", "保育園時代の自分に声をかけるなら、何と言いますか？"),
+      LR.F("A18", "同じような子どもを育てている親に伝えたいことはありますか？"),
+    ]},
+  ],
+};
+
+/* ---- フェーズB: 小学校 ---- */
+const LR_PHASE_B = {
+  key: "shogakko", title: "小学校", emoji: "🎒",
+  groups: [
+    { title: "当時の環境", qs: [
+      LR.SEL("B1", "小学校へ行くことは好きでしたか？", ["とても好き", "どちらかといえば好き", "どちらともいえない", "どちらかといえば嫌い", "とても嫌い"]),
+      LR.F("B2", "低学年と高学年で、学校生活の感じ方は変わりましたか？"),
+      LR.S("B3", "好きだった教科は何ですか？"),
+      LR.S("B4", "苦手だった教科は何ですか？"),
+      LR.F("B5", "安心できた場所はどこでしたか？"),
+    ]},
+    { title: "好き・得意", qs: [
+      LR.F("B6", "小学生の頃に夢中になっていたことは何ですか？"),
+      LR.F("B7", "周囲から褒められたことは何ですか？"),
+      LR.F("B8", "自分では得意だと思っていたことは何ですか？"),
+      LR.F("B9", "一人でやることと、誰かとやることでは、どちらが楽でしたか？"),
+    ]},
+    { title: "学校生活の困りごと", qs: [
+      LR.MULTI("B10", "困ったことを選んでください。", ["忘れ物", "宿題", "提出物", "時間割", "机やロッカーの整理", "朝の準備", "遅刻", "授業への集中", "板書", "テスト", "長い説明を聞く", "分からないことを質問する", "集団行動", "体育", "給食", "音やにおい", "友人関係", "先生との関係", "特になかった", "その他"]),
+      LR.F("B11", "一番困っていたことは何ですか？"),
+      LR.F("B12", "どのような場面で起きていましたか？"),
+      LR.F("B13", "周囲には、どのように見られていたと思いますか？"),
+      LR.F("B14", "自分の中では、何が起きていたと思いますか？"),
+      LR.F("B15", "「やらなければいけない」と分かっていても、できないことはありましたか？"),
+      LR.MULTI("B16", "怒られたとき、どのような気持ちでしたか？", ["怖かった", "悲しかった", "腹が立った", "恥ずかしかった", "自分が悪いと思った", "なぜ怒られているか分からなかった", "何も感じなかった", "その場から逃げたかった", "その他"]),
+    ]},
+    { title: "友人関係", qs: [
+      LR.F("B17", "友達は作りやすかったですか？"),
+      LR.F("B18", "一人でいる方が楽だと感じることはありましたか？"),
+      LR.F("B19", "仲間外れ、いじめ、からかいなどはありましたか？"),
+      LR.F("B20", "友達とのトラブルが起きたとき、その理由を理解できましたか？"),
+      LR.F("B21", "周囲に合わせるために、無理をしていたことはありますか？"),
+    ]},
+    { title: "親・先生との関係", qs: [
+      LR.F("B22", "親に言えなかったことはありましたか？"),
+      LR.F("B23", "先生に言えなかったことはありましたか？"),
+      LR.F("B24", "困っていることを家で話せましたか？"),
+      LR.F("B25", "親から言われて嫌だった言葉や接し方はありますか？"),
+      LR.F("B26", "親から言われて助かった言葉や接し方はありますか？"),
+      LR.F("B27", "先生から言われて印象に残っていることはありますか？"),
+    ]},
+    { title: "相談・支援", qs: [
+      LR.MULTI("B28", "困ったとき、誰に相談していましたか？", ["母親", "父親", "兄弟・姉妹", "祖父母", "担任", "別の先生", "保健室の先生", "友達", "誰にも相談しなかった", "その他"]),
+      LR.MULTI("B29", "相談しなかったことがある場合、その理由は何ですか？", ["怒られそうだった", "心配をかけたくなかった", "恥ずかしかった", "説明の仕方が分からなかった", "自分でも何に困っているか分からなかった", "大したことではないと思った", "信頼できる人がいなかった", "その他"]),
+      LR.F("B30", "どのような人なら相談しやすかったと思いますか？"),
+      LR.F("B31", "同じ障がいや特性を持つ年上の人がいたら、何を聞きたかったですか？"),
+      LR.F("B32", "当時、親や先生以外の相談相手は必要だったと思いますか？"),
+    ]},
+    { title: "振り返り", qs: [
+      LR.F("B33", "小学校での経験は、中学校以降にどのような影響を与えましたか？"),
+      LR.F("B34", "今も残っている苦手意識はありますか？"),
+      LR.F("B35", "現在の強みにつながっていることはありますか？"),
+      LR.F("B36", "小学生の自分に声をかけるなら、何と言いますか？"),
+      LR.F("B37", "同じようなことで困っている小学生に伝えたいことはありますか？"),
+      LR.F("B38", "その子の親に伝えたいことはありますか？"),
+    ]},
+  ],
+};
+
+/* ---- フェーズC: 中学校 ---- */
+const LR_PHASE_C = {
+  key: "chugakko", title: "中学校", emoji: "📘",
+  groups: [
+    { title: "環境の変化", qs: [
+      LR.F("C1", "中学校に入って、一番大きく変わったことは何ですか？"),
+      LR.F("C2", "教科ごとに先生が変わることをどう感じましたか？"),
+      LR.F("C3", "持ち物や提出物の管理は、小学校より難しくなりましたか？"),
+      LR.F("C4", "部活動には参加していましたか？"),
+      LR.F("C5", "学校へ行くことをどう感じていましたか？"),
+    ]},
+    { title: "学習・自己管理", qs: [
+      LR.F("C6", "定期テストの勉強計画を立てられましたか？"),
+      LR.F("C7", "長期課題や提出期限を管理できましたか？"),
+      LR.F("C8", "やるべきことを後回しにすることはありましたか？"),
+      LR.F("C9", "遅刻・欠席・忘れ物はありましたか？"),
+      LR.F("C10", "睡眠や生活リズムで困ることはありましたか？"),
+      LR.F("C11", "学校生活で疲れ切ってしまうことはありましたか？"),
+      LR.F("C12", "一番困っていたことは何ですか？"),
+      LR.F("C13", "周囲にはどう見えていたと思いますか？"),
+      LR.F("C14", "本人の中では何が起きていましたか？"),
+    ]},
+    { title: "人間関係・思春期", qs: [
+      LR.F("C15", "友人関係は小学校から変わりましたか？"),
+      LR.F("C16", "グループ内の暗黙のルールで困ることはありましたか？"),
+      LR.F("C17", "周囲に合わせるために無理をしていましたか？"),
+      LR.F("C18", "自分の見た目や性格をどう感じていましたか？"),
+      LR.F("C19", "恋愛や異性関係で困ったことはありましたか？"),
+      LR.F("C20", "親には言えない悩みがありましたか？"),
+      LR.F("C21", "家に帰ると強く疲れていたことはありましたか？"),
+    ]},
+    { title: "親・先生との関係", qs: [
+      LR.F("C22", "親と話す時間や内容は変わりましたか？"),
+      LR.F("C23", "親に言われて嫌だったことは何ですか？"),
+      LR.F("C24", "親に気づいてほしかったことは何ですか？"),
+      LR.F("C25", "周囲から反抗期だと思われていたものの、本当は困っていたことはありますか？"),
+      LR.F("C26", "先生にはどこまで本音を話せましたか？"),
+    ]},
+    { title: "相談・支援", qs: [
+      LR.F("C27", "学校内に相談できる人はいましたか？"),
+      LR.F("C28", "相談相手が先生しかいなかったことで、困ったことはありますか？"),
+      LR.F("C29", "少し年上の当事者なら話せたと思いますか？"),
+      LR.MULTI("C30", "どのような場所なら相談しやすかったと思いますか？", ["学校", "学校外の施設", "自宅の近く", "カフェなど堅くない場所", "対面", "電話", "LINE・チャット", "匿名", "その他"]),
+      LR.F("C31", "当時、どんな大人が近くにいたらよかったですか？"),
+    ]},
+    { title: "進路", qs: [
+      LR.F("C32", "高校進学について、どのように考えていましたか？"),
+      LR.F("C33", "自分に合う高校を選べたと思いますか？"),
+      LR.F("C34", "親や先生の意見に流された部分はありますか？"),
+      LR.F("C35", "当時知っておきたかった進路情報はありますか？"),
+    ]},
+    { title: "振り返り", qs: [
+      LR.F("C36", "中学生の自分に声をかけるなら、何と言いますか？"),
+      LR.F("C37", "同じようなことで悩む中学生に伝えたいことはありますか？"),
+      LR.F("C38", "その子の親に伝えたいことはありますか？"),
+    ]},
+  ],
+};
+
+/* ---- フェーズD: 高校 ---- */
+const LR_PHASE_D = {
+  key: "kouko", title: "高校", emoji: "🏫",
+  groups: [
+    { title: "学校・生活", qs: [
+      LR.F("D1", "高校はどのように選びましたか？"),
+      LR.F("D2", "その高校は自分に合っていたと思いますか？"),
+      LR.F("D3", "授業・課題・出席の管理はできましたか？"),
+      LR.F("D4", "友人関係はどうでしたか？"),
+      LR.F("D5", "部活動やアルバイトはしていましたか？"),
+      LR.F("D6", "高校生活で一番楽しかったことは何ですか？"),
+      LR.F("D7", "一番つらかったことは何ですか？"),
+    ]},
+    { title: "自立・自己管理", qs: [
+      LR.F("D8", "自分で予定を管理できましたか？"),
+      LR.F("D9", "朝起きる、身支度、通学は負担でしたか？"),
+      LR.F("D10", "お金を自分で管理できましたか？"),
+      LR.F("D11", "親に頼っていたことは何ですか？"),
+      LR.F("D12", "自分ではできると思っていたものの、実際には難しかったことはありますか？"),
+      LR.F("D13", "周囲にはどう見えていたと思いますか？"),
+      LR.F("D14", "本人の中では何が起きていましたか？"),
+    ]},
+    { title: "障がい・自己理解", qs: [
+      LR.F("D15", "自分の障がいや特性について、どの程度理解していましたか？"),
+      LR.F("D16", "障がいを周囲に公表していましたか？"),
+      LR.F("D17", "公表していなかった場合、その理由は何ですか？"),
+      LR.F("D18", "障がいを隠すことで困ったことはありましたか？"),
+      LR.F("D19", "自分の得意・苦手を説明できましたか？"),
+      LR.F("D20", "必要な配慮を周囲に伝えられましたか？"),
+      LR.F("D21", "自分が周囲と違うことを、どのように受け止めていましたか？"),
+    ]},
+    { title: "進路・将来", qs: [
+      LR.F("D22", "卒業後の進路をいつ頃考え始めましたか？"),
+      LR.F("D23", "やりたいことや、なりたい職業はありましたか？"),
+      LR.F("D24", "自分に向いている仕事を理解していましたか？"),
+      LR.F("D25", "進路情報は誰から得ましたか？"),
+      LR.F("D26", "一般雇用と障がい者雇用について知っていましたか？"),
+      LR.F("D27", "将来にどのような不安がありましたか？"),
+      LR.F("D28", "成人した障がい当事者と話せる機会があれば、何を聞きたかったですか？"),
+    ]},
+    { title: "相談・支援", qs: [
+      LR.F("D29", "進路や就職について相談できる人はいましたか？"),
+      LR.F("D30", "親にはどこまで本音を話せましたか？"),
+      LR.F("D31", "先生への相談で役に立ったことは何ですか？"),
+      LR.F("D32", "先生に相談しても解決しなかったことはありますか？"),
+      LR.F("D33", "当時どのような大人が近くにいたらよかったですか？"),
+      LR.F("D34", "親に準備してほしかったことはありますか？"),
+    ]},
+    { title: "振り返り", qs: [
+      LR.F("D35", "高校時代に知っておきたかったことは何ですか？"),
+      LR.F("D36", "高校生の自分に声をかけるなら、何と言いますか？"),
+      LR.F("D37", "同じ悩みを持つ高校生に伝えたいことはありますか？"),
+      LR.F("D38", "その子の親に伝えたいことはありますか？"),
+    ]},
+  ],
+};
+
+/* ---- フェーズE: 社会人 ---- */
+const LR_PHASE_E = {
+  key: "shakaijin", title: "社会人", emoji: "💼",
+  groups: [
+    { title: "就職前後", qs: [
+      LR.F("E1", "最初の仕事は、どのように決めましたか？"),
+      LR.F("E2", "一般雇用・障がい者雇用のどちらでしたか？"),
+      LR.F("E3", "仕事を始める前の想像と、実際の働き方に違いはありましたか？"),
+      LR.F("E4", "最初に困ったことは何ですか？"),
+      LR.F("E5", "仕事内容は自分の特性に合っていたと思いますか？"),
+      LR.F("E6", "周囲にはどのように見られていたと思いますか？"),
+      LR.F("E7", "本人の中では何が起きていましたか？"),
+    ]},
+    { title: "仕事上の困りごと", qs: [
+      LR.MULTI("E8", "困ったことを選んでください。", ["曖昧な指示", "複数業務の同時進行", "優先順位", "分からないことを質問する", "ミスへの対応", "納期管理", "時間管理", "遅刻・欠勤", "集中力", "体力・疲れやすさ", "職場の人間関係", "雑談", "電話対応", "急な予定変更", "音や環境", "特になかった", "その他"]),
+      LR.F("E9", "一番大きな困りごとは何でしたか？"),
+      LR.F("E10", "どのような指示なら理解しやすかったですか？"),
+      LR.F("E11", "ミスをしたとき、どのような気持ちになりましたか？"),
+      LR.F("E12", "分からないときに質問できなかったことはありますか？"),
+      LR.F("E13", "仕事を辞めたいと思ったことはありますか？"),
+      LR.F("E14", "その理由は何でしたか？"),
+    ]},
+    { title: "障がい者雇用・配慮", qs: [
+      LR.F("E15", "障がい者雇用で助かった配慮はありますか？"),
+      LR.F("E16", "障がい者雇用に対する不満や違和感はありましたか？"),
+      LR.F("E17", "必要な配慮を自分から説明できましたか？"),
+      LR.F("E18", "会社や支援者に理解してほしかったことはありますか？"),
+      LR.F("E19", "一般雇用と障がい者雇用について、良かった点・難しかった点を教えてください。"),
+    ]},
+    { title: "生活・自立", qs: [
+      LR.F("E20", "仕事と家事の両立はできましたか？"),
+      LR.F("E21", "お金の管理で困りましたか？"),
+      LR.F("E22", "生活リズムで困りましたか？"),
+      LR.F("E23", "人付き合い、恋愛、結婚で困ることはありましたか？"),
+      LR.F("E24", "一人では難しく、誰かのサポートが必要なことは何ですか？"),
+      LR.F("E25", "反対に、一人でも問題なくできることは何ですか？"),
+      LR.F("E26", "大人になってから強みとして発揮できた特性はありますか？"),
+    ]},
+    { title: "過去からの影響", qs: [
+      LR.F("E27", "子どもの頃の経験が、仕事に影響したことはありますか？"),
+      LR.F("E28", "小学生の頃から準備できたかもしれないことはありますか？"),
+      LR.F("E29", "中学生・高校生の頃に知っておきたかったことはありますか？"),
+      LR.F("E30", "親にしてもらってよかったことは何ですか？"),
+      LR.F("E31", "親にしてほしかったことは何ですか？"),
+    ]},
+    { title: "現在からのメッセージ", qs: [
+      LR.F("E32", "社会人になった自分から、子ども時代の自分に何を伝えたいですか？"),
+      LR.F("E33", "同じような特性を持つ子どもに、将来について何を伝えたいですか？"),
+      LR.F("E34", "その子の親に何を伝えたいですか？"),
+      LR.F("E35", "今の自分に必要な相談相手や支援は、どのようなものですか？"),
+    ]},
+  ],
+};
+
+const LIFE_PHASES = [LR_PHASE_A, LR_PHASE_B, LR_PHASE_C, LR_PHASE_D, LR_PHASE_E];
+
+/* -------------------------------------------------------------------------
+   人生棚卸し: 状態管理・保存
+   ------------------------------------------------------------------------- */
+
+const LR_STORAGE_KEY = "life_review_answers_v1";
+
+// lrData構造: { [phaseKey]: { answers: { [qid]: value }, skipped: { [qid]: true }, completed: bool } }
+let lrData = {};
+
+function lrFlatQuestions(phase) {
+  const list = [];
+  phase.groups.forEach(g => g.qs.forEach(q => list.push({ ...q, groupTitle: g.title })));
+  return list;
+}
+function lrTotalCount(phase) { return lrFlatQuestions(phase).length; }
+
+function lrLoad() {
+  try {
+    const raw = localStorage.getItem(LR_STORAGE_KEY);
+    lrData = raw ? JSON.parse(raw) : {};
+  } catch (e) { lrData = {}; }
+  LIFE_PHASES.forEach(p => {
+    if (!lrData[p.key]) lrData[p.key] = { answers: {}, skipped: {}, completed: false };
+  });
+}
+function lrPersist() {
+  try { localStorage.setItem(LR_STORAGE_KEY, JSON.stringify(lrData)); } catch (e) { /* noop */ }
+}
+
+function lrAnsweredCount(phase) {
+  const d = lrData[phase.key];
+  const flat = lrFlatQuestions(phase);
+  return flat.filter(q => {
+    const v = d.answers[q.id];
+    if (d.skipped[q.id]) return true;
+    if (Array.isArray(v)) return v.length > 0;
+    return v !== undefined && v !== null && String(v).trim() !== "";
+  }).length;
+}
+function lrPhaseStatus(phase) {
+  const answered = lrAnsweredCount(phase);
+  const total = lrTotalCount(phase);
+  const d = lrData[phase.key];
+  if (d.completed) return "done";
+  if (answered === 0) return "notstarted";
+  return "inprogress";
+}
+
+/* -------------------------------------------------------------------------
+   人生棚卸し: 画面状態
+   ------------------------------------------------------------------------- */
+
+const lrState = {
+  screen: "home",   // home | phase | view
+  phaseKey: null,
+  page: 0,          // ページ（3〜4問ずつ）
+  PAGE_SIZE: 4,
+};
+
+const lrStage = () => document.getElementById("lrStage");
+const lrNavbar = () => document.getElementById("lrNavbar");
+const lrHeaderInfo = () => document.getElementById("lrHeaderInfo");
+const lrProgressTrack = () => document.getElementById("lrProgressTrack");
+const lrProgressFill = () => document.getElementById("lrProgressFill");
+
+function lrPhaseByKey(key) { return LIFE_PHASES.find(p => p.key === key); }
+
+function lrGoHome() {
+  lrState.screen = "home";
+  lrState.phaseKey = null;
+  lrRender();
+}
+function lrGoPhase(key, page) {
+  lrState.screen = "phase";
+  lrState.phaseKey = key;
+  lrState.page = page || 0;
+  lrRender();
+}
+function lrGoView(key) {
+  lrState.screen = "view";
+  lrState.phaseKey = key;
+  lrRender();
+}
+
+/* -------------------------------------------------------------------------
+   人生棚卸し: レンダリング
+   ------------------------------------------------------------------------- */
+
+function lrRender() {
+  if (lrState.screen === "home") return lrRenderHome();
+  if (lrState.screen === "phase") return lrRenderPhase();
+  if (lrState.screen === "view") return lrRenderView();
+}
+
+function lrRenderHome() {
+  lrHeaderInfo().innerHTML = "";
+  lrProgressTrack().style.display = "none";
+  lrNavbar().setAttribute("data-visible", "false");
+
+  const doneCount = LIFE_PHASES.filter(p => lrPhaseStatus(p) === "done").length;
+
+  const cardsHtml = LIFE_PHASES.map(p => {
+    const status = lrPhaseStatus(p);
+    const answered = lrAnsweredCount(p);
+    const total = lrTotalCount(p);
+    const pct = Math.round((answered / total) * 100);
+    const statusLabel = status === "done" ? "回答済み" : status === "inprogress" ? "回答中" : "未回答";
+    const btnLabel = answered === 0 ? "回答する" : "続きを回答する";
+    return `
+      <div class="lr-phase-card ${status === "done" ? "done" : status === "inprogress" ? "inprogress" : ""}">
+        <div class="lr-phase-top">
+          <div class="lr-phase-name">${p.emoji} ${p.title}</div>
+          <div class="lr-phase-status ${status === "done" ? "done" : status === "inprogress" ? "inprogress" : ""}">${statusLabel}</div>
+        </div>
+        <div class="lr-phase-count">${total}問中${answered}問回答済み</div>
+        <div class="lr-phase-bar-track"><div class="lr-phase-bar-fill" style="width:${Math.max(3, pct)}%"></div></div>
+        <div class="lr-phase-actions">
+          <button class="btn btn-primary" onclick="lrGoPhase('${p.key}')">${btnLabel}</button>
+          ${answered > 0 ? `<button class="btn btn-outline" onclick="lrGoView('${p.key}')">回答を見る</button>` : ""}
+        </div>
+      </div>
+    `;
+  }).join("");
+
+  lrStage().innerHTML = `
+    <div class="card lr-intro-card">
+      <div class="intro-emoji">📖🌿</div>
+      <h1>人生棚卸し</h1>
+      <p class="intro-lead">保育園から社会人まで、これまでの経験を少しずつ振り返るためのページです。一気に答える必要はありません。答えたくない質問は、回答せずに進めることができます。</p>
+      <div class="lr-notice">
+        このアンケートは、これまでの経験を振り返るためのものです。医療的な診断や心理検査ではありません。答えたくない質問は、回答せずに進めることができます。回答はこの端末の中に保存され、外部には送信されません。
+      </div>
+      <div class="lr-overall-progress">人生棚卸し進捗：5フェーズ中${doneCount}フェーズ完了</div>
+    </div>
+    <div class="lr-phase-grid">${cardsHtml}</div>
+  `;
+}
+
+function lrRenderPhase() {
+  const phase = lrPhaseByKey(lrState.phaseKey);
+  const flat = lrFlatQuestions(phase);
+  const totalPages = Math.ceil(flat.length / lrState.PAGE_SIZE);
+  const isDonePage = lrState.page >= totalPages;
+
+  lrProgressTrack().style.display = "block";
+  lrNavbar().setAttribute("data-visible", "true");
+
+  const answeredSoFar = lrAnsweredCount(phase);
+  lrHeaderInfo().innerHTML = `<span>${phase.emoji} ${phase.title}（${answeredSoFar}／${flat.length}問）</span>`;
+
+  if (isDonePage) {
+    lrProgressFill().style.width = "100%";
+    lrStage().innerHTML = `
+      <div class="card lr-phase-done-card">
+        <div class="emoji">🌿</div>
+        <h2>${phase.title}の質問はここまでです</h2>
+        <p style="color:var(--ink-soft);font-size:14.5px;">お疲れさまでした。空欄のままでも大丈夫です。あとから続きを編集することもできます。</p>
+        <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:18px;">
+          <button class="btn btn-outline" onclick="lrGoView('${phase.key}')">回答を見る・編集する</button>
+          <button class="btn btn-primary" onclick="lrMarkComplete('${phase.key}')">このフェーズを完了にする</button>
+        </div>
+      </div>
+    `;
+    el("lrBtnNext").style.visibility = "hidden";
+    el("lrBtnPrev").style.visibility = totalPages > 0 ? "visible" : "hidden";
+    el("lrBtnPause").textContent = "トップへ戻る";
+    return;
+  }
+
+  const pct = Math.round(((lrState.page + 1) / totalPages) * 100);
+  lrProgressFill().style.width = pct + "%";
+
+  const pageItems = flat.slice(lrState.page * lrState.PAGE_SIZE, (lrState.page + 1) * lrState.PAGE_SIZE);
+  const d = lrData[phase.key];
+
+  let lastGroupTitle = null;
+  const itemsHtml = pageItems.map(q => {
+    let groupHtml = "";
+    if (q.groupTitle !== lastGroupTitle) {
+      groupHtml = `<div class="lr-group-title">◆ ${q.groupTitle}</div>`;
+      lastGroupTitle = q.groupTitle;
+    }
+    return groupHtml + lrRenderQuestion(q, phase.key, d);
+  }).join("");
+
+  lrStage().innerHTML = `<div class="card question-card">${itemsHtml}</div>`;
+
+  el("lrBtnNext").style.visibility = "visible";
+  el("lrBtnNext").textContent = (lrState.page === totalPages - 1) ? "最後へ →" : "次へ →";
+  el("lrBtnPrev").style.visibility = lrState.page === 0 ? "hidden" : "visible";
+  el("lrBtnPause").textContent = "一時保存して終了";
+}
+
+function lrRenderQuestion(q, phaseKey, d) {
+  const skipped = !!d.skipped[q.id];
+  const value = d.answers[q.id];
+
+  let bodyHtml = "";
+  if (q.type === "single") {
+    bodyHtml = `<div class="opt-list">${q.options.map(opt => `
+      <div class="opt-chip radio ${value === opt ? "selected" : ""}" onclick="lrSetSingle('${phaseKey}','${q.id}', this, ${JSON.stringify(opt)})">
+        <span class="mark">${value === opt ? "●" : ""}</span><span>${opt}</span>
+      </div>`).join("")}</div>`;
+  } else if (q.type === "multi") {
+    const arr = Array.isArray(value) ? value : [];
+    bodyHtml = `<div class="opt-list">${q.options.map(opt => `
+      <div class="opt-chip ${arr.includes(opt) ? "selected" : ""}" onclick="lrToggleMulti('${phaseKey}','${q.id}', this, ${JSON.stringify(opt)})">
+        <span class="mark">${arr.includes(opt) ? "✓" : ""}</span><span>${opt}</span>
+      </div>`).join("")}</div>`;
+  } else if (q.type === "short") {
+    bodyHtml = `<input type="text" class="lr-q-input" placeholder="短い言葉で大丈夫です" value="${value ? escapeHtml(value) : ""}" ${skipped ? "disabled" : ""}
+      oninput="lrSetText('${phaseKey}','${q.id}', this.value)">`;
+  } else { // free
+    bodyHtml = `<textarea class="lr-q-textarea" placeholder="きれいな文章にする必要はありません。単語や短い文章でも大丈夫です。" ${skipped ? "disabled" : ""}
+      oninput="lrSetText('${phaseKey}','${q.id}', this.value)">${value ? escapeHtml(value) : ""}</textarea>
+      <div class="lr-q-hint">きれいな文章にする必要はありません。単語や短い文章でも大丈夫です。</div>`;
+  }
+
+  const skipRow = (q.type === "free" || q.type === "short") ? `
+    <div class="lr-skip-row">
+      <button type="button" class="lr-skip-btn ${skipped ? "active" : ""}" onclick="lrToggleSkip('${phaseKey}','${q.id}')">
+        ${skipped ? "✕ この質問への回答をスキップ中（クリックで解除）" : "この質問は回答しない（スキップ）"}
+      </button>
+    </div>` : "";
+
+  return `
+    <div class="lr-q-block">
+      <div class="lr-q-text">${q.text}</div>
+      ${bodyHtml}
+      ${skipRow}
+    </div>
+  `;
+}
+
+function escapeHtml(str) {
+  return String(str).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+}
+
+/* ---- 回答セット関数（グローバルに公開してonclick/oninputから呼べるようにする） ---- */
+function lrSetSingle(phaseKey, qid, elm, value) {
+  lrData[phaseKey].answers[qid] = value;
+  lrData[phaseKey].skipped[qid] = false;
+  lrPersist();
+  const parent = elm.parentElement;
+  parent.querySelectorAll(".opt-chip").forEach(c => { c.classList.remove("selected"); c.querySelector(".mark").textContent = ""; });
+  elm.classList.add("selected");
+  elm.querySelector(".mark").textContent = "●";
+}
+function lrToggleMulti(phaseKey, qid, elm, value) {
+  const d = lrData[phaseKey];
+  if (!Array.isArray(d.answers[qid])) d.answers[qid] = [];
+  const arr = d.answers[qid];
+  const i = arr.indexOf(value);
+  if (i >= 0) { arr.splice(i, 1); elm.classList.remove("selected"); elm.querySelector(".mark").textContent = ""; }
+  else { arr.push(value); elm.classList.add("selected"); elm.querySelector(".mark").textContent = "✓"; }
+  d.skipped[qid] = false;
+  lrPersist();
+}
+function lrSetText(phaseKey, qid, value) {
+  lrData[phaseKey].answers[qid] = value;
+  lrPersist();
+  // ホーム画面のカウント表示更新のため、フッター情報のみ軽量更新
+  const phase = lrPhaseByKey(phaseKey);
+  const answered = lrAnsweredCount(phase);
+  const flat = lrFlatQuestions(phase);
+  const info = lrHeaderInfo();
+  if (info) info.innerHTML = `<span>${phase.emoji} ${phase.title}（${answered}／${flat.length}問）</span>`;
+}
+function lrToggleSkip(phaseKey, qid) {
+  const d = lrData[phaseKey];
+  d.skipped[qid] = !d.skipped[qid];
+  if (d.skipped[qid]) d.answers[qid] = "";
+  lrPersist();
+  lrRenderPhase();
+}
+function lrMarkComplete(phaseKey) {
+  lrData[phaseKey].completed = true;
+  lrPersist();
+  showToast("フェーズを完了として保存しました");
+  lrGoHome();
+}
+
+/* ---- 閲覧・編集画面 ---- */
+function lrRenderView() {
+  const phase = lrPhaseByKey(lrState.phaseKey);
+  const flat = lrFlatQuestions(phase);
+  const d = lrData[phase.key];
+
+  lrHeaderInfo().innerHTML = `<span>${phase.emoji} ${phase.title}の回答</span>`;
+  lrProgressTrack().style.display = "none";
+  lrNavbar().setAttribute("data-visible", "false");
+
+  let lastGroupTitle = null;
+  const itemsHtml = flat.map(q => {
+    let groupHtml = "";
+    if (q.groupTitle !== lastGroupTitle) {
+      groupHtml = `<div class="lr-group-title">◆ ${q.groupTitle}</div>`;
+      lastGroupTitle = q.groupTitle;
+    }
+    const v = d.answers[q.id];
+    const skipped = !!d.skipped[q.id];
+    let displayVal;
+    if (skipped) displayVal = "（スキップ）";
+    else if (Array.isArray(v) && v.length) displayVal = v.join("、");
+    else if (v && String(v).trim() !== "") displayVal = v;
+    else displayVal = "（未回答）";
+    const isEmpty = displayVal === "（未回答）";
+    return groupHtml + `
+      <div class="lr-view-item">
+        <div class="lr-view-q">${q.text}</div>
+        <div class="lr-view-a ${isEmpty ? "empty" : ""}">${escapeHtml(displayVal)}</div>
+      </div>
+    `;
+  }).join("");
+
+  lrStage().innerHTML = `
+    <div class="card">
+      <button class="lr-back-link" onclick="lrGoHome()">← 人生棚卸しトップへ戻る</button>
+      <div class="section-title">${phase.emoji} ${phase.title}の回答内容</div>
+      <p style="font-size:13px;color:var(--ink-soft);margin-top:-6px;">続きから回答・修正したい場合は、下のボタンから編集画面に進めます。</p>
+      <div style="margin:14px 0 20px;">
+        <button class="btn btn-primary" onclick="lrGoPhase('${phase.key}', 0)">回答を編集する</button>
+      </div>
+      ${itemsHtml}
+    </div>
+  `;
+}
+
+/* -------------------------------------------------------------------------
+   人生棚卸し: ナビゲーション操作
+   ------------------------------------------------------------------------- */
+
+el("lrBtnNext")?.addEventListener("click", () => {
+  const phase = lrPhaseByKey(lrState.phaseKey);
+  const totalPages = Math.ceil(lrFlatQuestions(phase).length / lrState.PAGE_SIZE);
+  lrState.page = Math.min(lrState.page + 1, totalPages);
+  lrRenderPhase();
+  lrStage().scrollIntoView({ block: "start" });
+});
+el("lrBtnPrev")?.addEventListener("click", () => {
+  if (lrState.page === 0) { lrGoHome(); return; }
+  lrState.page = Math.max(0, lrState.page - 1);
+  lrRenderPhase();
+});
+el("lrBtnPause")?.addEventListener("click", () => { lrGoHome(); });
+
+/* -------------------------------------------------------------------------
+   モード切替（業務診断 ⇔ 人生棚卸し）
+   ------------------------------------------------------------------------- */
+
+function setAppMode(mode) {
+  document.getElementById("diagnosisApp").style.display = mode === "diagnosis" ? "" : "none";
+  document.getElementById("lifeReviewApp").style.display = mode === "lifereview" ? "" : "none";
+  document.getElementById("modeBtnDiagnosis").classList.toggle("active", mode === "diagnosis");
+  document.getElementById("modeBtnLifereview").classList.toggle("active", mode === "lifereview");
+  if (mode === "lifereview") { lrLoad(); lrGoHome(); }
+}
+document.getElementById("modeBtnDiagnosis")?.addEventListener("click", () => setAppMode("diagnosis"));
+document.getElementById("modeBtnLifereview")?.addEventListener("click", () => setAppMode("lifereview"));
+
+/* 初期モード */
+setAppMode("diagnosis");

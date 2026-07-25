@@ -368,3 +368,138 @@ button{font-family:inherit;}
   #screen-result{display:block !important;}
   .card,.result-hero,.top-cat-card,.classify-block,.biz-card{box-shadow:none !important;border:1px solid #ccc;}
 }
+
+/* =========================================================================
+   人生棚卸し (Life Review) module styles
+   ========================================================================= */
+
+.mode-switch{
+  position:sticky;
+  top:0;
+  z-index:60;
+  display:flex;
+  justify-content:center;
+  gap:8px;
+  padding:10px 12px;
+  background:var(--ink);
+}
+.mode-btn{
+  border:none;
+  background:transparent;
+  color:rgba(255,255,255,0.6);
+  font-weight:700;
+  font-size:13.5px;
+  padding:8px 16px;
+  border-radius:99px;
+  cursor:pointer;
+  font-family:inherit;
+  transition:all .15s ease;
+}
+.mode-btn.active{
+  background:#fff;
+  color:var(--ink);
+}
+
+/* ---- Life review home ---- */
+.lr-intro-card{text-align:center;}
+.lr-intro-card h1{font-size:24px;color:var(--sage-deep);margin:6px 0 12px;}
+.lr-notice{
+  background:var(--sand);
+  border-radius:var(--radius-md);
+  padding:16px 18px;
+  font-size:13.5px;
+  color:var(--ink-soft);
+  text-align:left;
+  line-height:1.7;
+  margin:18px 0;
+}
+.lr-overall-progress{
+  font-size:13.5px;
+  font-weight:700;
+  color:var(--sage-deep);
+  margin:4px 0 18px;
+}
+
+.lr-phase-grid{display:flex;flex-direction:column;gap:14px;}
+.lr-phase-card{
+  background:var(--paper);
+  border:2px solid var(--line);
+  border-radius:var(--radius-lg);
+  padding:20px 22px;
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+}
+.lr-phase-card.done{border-color:var(--sage);}
+.lr-phase-card.inprogress{border-color:var(--coral);}
+.lr-phase-top{display:flex;align-items:center;justify-content:space-between;gap:10px;}
+.lr-phase-name{font-size:18px;font-weight:800;color:var(--ink);display:flex;align-items:center;gap:8px;}
+.lr-phase-status{
+  font-size:12px;font-weight:800;padding:4px 12px;border-radius:99px;
+  background:var(--sand);color:var(--ink-soft);flex-shrink:0;
+}
+.lr-phase-status.inprogress{background:#fff3dc;color:#93691f;}
+.lr-phase-status.done{background:#e9f4ec;color:var(--sage-deep);}
+.lr-phase-count{font-size:13px;color:var(--ink-soft);}
+.lr-phase-bar-track{height:8px;background:var(--sand);border-radius:99px;overflow:hidden;}
+.lr-phase-bar-fill{height:100%;background:linear-gradient(90deg,var(--sage),var(--lavender));border-radius:99px;}
+.lr-phase-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:4px;}
+
+/* ---- Phase question flow ---- */
+.lr-group-title{
+  font-size:13.5px;font-weight:800;color:var(--sage-deep);
+  margin:22px 0 10px;
+}
+.lr-group-title:first-child{margin-top:4px;}
+.lr-q-block{padding:18px 0;border-top:1px solid var(--line);}
+.lr-q-block:first-child{border-top:none;padding-top:2px;}
+.lr-q-text{font-size:16px;font-weight:700;color:var(--ink);margin-bottom:10px;}
+.lr-q-textarea{
+  width:100%;
+  min-height:110px;
+  border:2px solid var(--line);
+  border-radius:var(--radius-sm);
+  padding:12px 14px;
+  font-family:inherit;
+  font-size:15px;
+  color:var(--ink);
+  background:var(--cream);
+  resize:vertical;
+}
+.lr-q-input{
+  width:100%;
+  border:2px solid var(--line);
+  border-radius:var(--radius-sm);
+  padding:12px 14px;
+  font-family:inherit;
+  font-size:15px;
+  color:var(--ink);
+  background:var(--cream);
+}
+.lr-q-textarea:focus,.lr-q-input:focus{outline:none;border-color:var(--sage);}
+.lr-q-hint{font-size:12.5px;color:var(--ink-soft);margin-top:6px;}
+.lr-skip-row{margin-top:8px;}
+.lr-skip-btn{
+  border:none;background:none;color:var(--ink-soft);
+  font-size:12.5px;text-decoration:underline;cursor:pointer;padding:2px 0;
+  font-family:inherit;
+}
+.lr-skip-btn.active{color:var(--coral);font-weight:700;text-decoration:none;}
+
+.lr-phase-done-card{text-align:center;padding:36px 20px;}
+.lr-phase-done-card .emoji{font-size:34px;margin-bottom:8px;}
+
+/* ---- View / edit answers ---- */
+.lr-view-item{padding:14px 0;border-top:1px solid var(--line);}
+.lr-view-item:first-child{border-top:none;}
+.lr-view-q{font-size:14px;font-weight:700;color:var(--ink-soft);margin-bottom:4px;}
+.lr-view-a{font-size:15.5px;color:var(--ink);white-space:pre-wrap;}
+.lr-view-a.empty{color:#bcb8ad;font-style:italic;}
+.lr-back-link{
+  background:none;border:none;color:var(--sage-deep);font-weight:700;
+  font-size:14px;cursor:pointer;padding:0;margin-bottom:16px;font-family:inherit;
+}
+
+@media print{
+  .mode-switch{display:none !important;}
+}

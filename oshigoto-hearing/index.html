@@ -12,6 +12,12 @@
 </head>
 <body>
 
+<div class="mode-switch no-print" id="modeSwitch">
+  <button class="mode-btn" data-mode="diagnosis" id="modeBtnDiagnosis">🧭 業務診断</button>
+  <button class="mode-btn" data-mode="lifereview" id="modeBtnLifereview">📖 人生棚卸し</button>
+</div>
+
+<div id="diagnosisApp">
 <div class="app-shell">
 
   <!-- ===== HEADER / PROGRESS ===== -->
@@ -86,6 +92,36 @@
     <button class="btn btn-primary" id="btnPrint">🖨 結果を印刷 / PDF保存</button>
   </footer>
 
+</div>
+</div>
+
+<!-- ===== LIFE REVIEW APP (人生棚卸し) ===== -->
+<div id="lifeReviewApp" style="display:none">
+<div class="app-shell">
+
+  <header class="topbar no-print">
+    <div class="topbar-inner">
+      <div class="brand">
+        <span class="brand-leaf">📖</span>
+        <span class="brand-name" id="lrBrandName">人生棚卸し</span>
+      </div>
+      <div class="progress-info" id="lrHeaderInfo"></div>
+    </div>
+    <div class="progress-track" id="lrProgressTrack" style="display:none">
+      <div class="progress-fill" id="lrProgressFill" style="width:0%"></div>
+    </div>
+  </header>
+
+  <main class="stage" id="lrStage"></main>
+
+  <footer class="navbar no-print" id="lrNavbar" data-visible="false">
+    <button class="btn btn-ghost" id="lrBtnPrev">← 前へ</button>
+    <button class="btn btn-ghost" id="lrBtnPause">一時保存して終了</button>
+    <div class="navbar-spacer"></div>
+    <button class="btn btn-primary" id="lrBtnNext">次へ →</button>
+  </footer>
+
+</div>
 </div>
 
 <div class="toast no-print" id="toast"></div>
